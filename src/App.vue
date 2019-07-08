@@ -18,12 +18,18 @@
             >
               <template v-slot:items="props">
                 <td>{{ props.item.id }}</td>
+                <td>{{ props.item.pizza }}</td>
+                <td>{{ props.item.cantidad_pizzas }}</td>
+                <td>{{ props.item.direccion }}</td>
+                <td>{{ props.item.nombre }}</td>
+                <td>{{ props.item.telefono }}</td>
+                <td>{{ props.item.total }}</td>
                 <td>
                   <v-select
                     :items="pedido_options"
                     label="Estado de la compra"
                     solo
-                    @change="updateStatus($event, props.item.token)"
+                    @change="updateStatus($event, props.item.token, props.item.stripe)"
                   ></v-select>
                 </td>
               </template>
@@ -47,6 +53,36 @@ export default {
           value: 'id'
         },
         {
+          text: 'Especialidad',
+          sortable: true,
+          value: 'pizza'
+        },
+        {
+          text: 'Cantidad',
+          sortable: true,
+          value: 'cantidad_pizzas'
+        },
+        {
+          text: 'Dirección de envío',
+          sortable: true,
+          value: 'direccion'
+        },
+        {
+          text: 'Cliente',
+          sortable: false,
+          value: 'nombre'
+        },
+        {
+          text: 'Telefono',
+          sortable: false,
+          value: 'telefono'
+        },
+        {
+          text: 'Total',
+          sortable: true,
+          value: 'total'
+        },
+        {
           text: 'Acciones',
           sortable: false,
           value: 'token'
@@ -67,36 +103,33 @@ export default {
   methods: {
     fetchFirestore(){
       const firestore = this.$Firebase.firestore()
-      firestore.collection('clientes').get()
+      firestore.collection('pedidos').get()
       .then((querySnapshot) => {
         querySnapshot.forEach(element => {
-          if(element.data().token != null)
+          if(element.data().cliente != null)
           {
             this.pedidos.push({
-            id: element.id,
-            token: element.data().token// yeah, this is the goog one
+              id: element.id,
+              pizza: element.data().pizza,
+              cantidad_pizzas: element.data().cantidad_pizzas,
+              direccion: element.data().direccion,
+              nombre: element.data().nombre,
+              telefono: element.data().telefono,
+              total: element.data().total,
+              stripe: element.data().stripe_token,
+              token: element.data().cliente// yeah, this is the goog one
             })
           }
         })
       })
 
     },
-    updateStatus(e, token)
+    updateStatus(e, token, stripe_token)
     {
       console.log('Cambiando status de la orden')
       console.log(e)// Valor actual del select
-      console.log(token)// FCM token del cliente
-      // this.$axios.post(`https://fcm.googleapis.com/fcm/send`, {
-      //   to: token,
-      //   notification: {
-      //     title: "UPizza",
-      //     body: e
-      //   },
-      //   data: {
-      //     body: e,
-      //     title: "UPizza"
-      //   }
-      // })
+      console.log(token)// Token de stripe del cliente
+      console.log(stripe_token)// Token de stripe del cliente
       const request = this.buildFCMRequest({
         notification: {
           title: "UPizza",
@@ -113,6 +146,19 @@ export default {
       .then(
         (result) => {
           console.log(result)
+          //Actualizar el estado de la compra
+          const firestore = this.$Firebase.firestore()
+          firestore.collection('pedidos').where('stripe_token', '==', stripe_token)
+          .get()
+          .then(
+            (result) => {
+              result.forEach(pedido => {
+                const ref = firestore.collection('pedidos').doc(pedido.id).update({
+                  estado: e
+                })
+              });
+            }
+          )
         }
       )
       .catch(
