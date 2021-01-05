@@ -9,7 +9,7 @@
     "deploy": "firebase deploy --only hosting"
   },
   "dependencies": {
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "core-js": "^2.6.5",
     "fcm-node": "^1.5.1",
     "firebase": "^6.2.4",
